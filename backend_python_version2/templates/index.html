@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECG Diagnostic System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-light: #4895ef;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --warning: #f8961e;
+            --dark: #212529;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f2f5;
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        
+        .main-content {
+            padding: 2rem;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+        
+        .upload-section {
+            background: var(--light);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .file-upload {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .file-upload-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            border: 2px dashed var(--gray);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        
+        .file-upload-label:hover {
+            border-color: var(--primary);
+            background: rgba(67, 97, 238, 0.05);
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--secondary);
+        }
+        
+        .dual-chart-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+        
+        @media (min-width: 992px) {
+            .dual-chart-container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+            height: 400px;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+        
+        canvas {
+            background-color: var(--light);
+            border-radius: 8px;
+        }
+        
+        .chart-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .chart-btn {
+            padding: 0.5rem 1rem;
+            background: var(--light);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        
+        .chart-btn:hover {
+            background: #e9ecef;
+        }
+        
+        .results-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            padding: 1.5rem;
+            grid-column: 1 / -1;
+        }
+        
+        .diagnosis-summary {
+            margin-bottom: 2rem;
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        
+        .summary-card {
+            padding: 1.5rem;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            border-left: 5px solid var(--primary);
+        }
+        
+        .summary-card h4 {
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+        
+        .summary-card p {
+            margin: 0.25rem 0;
+            font-size: 0.9rem;
+        }
+        
+        .summary-card .percentage {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--primary);
+        }
+        
+        .summary-card .precision {
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+        
+        .segment-results {
+            margin-top: 2rem;
+        }
+        
+        .segment-table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+        
+        .segment-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .segment-table th, .segment-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .segment-table th {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa;
+            font-weight: 500;
+        }
+        
+        .segment-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .probability-bar {
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+        
+        .probability-fill {
+            height: 100%;
+            background: var(--primary);
+        }
+        
+        .signal-quality {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .quality-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .quality-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        .excellent {
+            background-color: #4cc9f0;
+        }
+        
+        .good {
+            background-color: #4ad66d;
+        }
+        
+        .poor {
+            background-color: #f8961e;
+        }
+        
+        .bad {
+            background-color: #f72585;
+        }
+        
+        .model-metrics {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .metric-card {
+            padding: 1rem;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .metric-card h5 {
+            margin-bottom: 0.5rem;
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+        
+        .metric-card p {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .loading-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            color: var(--danger);
+            background: rgba(247, 37, 133, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            border-left: 5px solid var(--danger);
+            display: none;
+        }
+        
+        .tab-container {
+            margin-top: 2rem;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 1rem;
+        }
+        
+        .tab {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            border-bottom: 3px solid var(--primary);
+            font-weight: 500;
+            color: var(--primary);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .feature-analysis-container {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .feature-plot {
+            height: 500px;
+            margin-top: 1rem;
+        }
+        
+        .feature-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+        }
+        
+        .feature-table th, .feature-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .feature-table th {
+            background-color: #f8f9fa;
+            font-weight: 500;
+        }
+        
+        .feature-table tr:hover {
+            background-color: white;
+        }
+        
+        .feature-type {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .time-domain {
+            background-color: #4cc9f0;
+            color: white;
+        }
+        
+        .freq-domain {
+            background-color: #4895ef;
+            color: white;
+        }
+        
+        .wavelet {
+            background-color: #4361ee;
+            color: white;
+        }
+        
+        .hrv {
+            background-color: #3f37c9;
+            color: white;
+        }
+        
+        .nav-link {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            margin-right: 0.5rem;
+            border-radius: 4px;
+            background: var(--light);
+            color: var(--dark);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .no-data {
+    text-align: center;
+    color: var(--gray);
+    padding: 2rem;
+    font-style: italic;
+}
+
+
+        .nav-link:hover {
+            background: var(--primary);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <h1><i class="fas fa-heartbeat"></i> ECG Diagnostic System</h1>
+            <p>Upload ECG data for automated classification and analysis</p>
+        </header>
+        
+        <main class="main-content">
+            <section class="upload-section">
+                <h2><i class="fas fa-upload"></i> Upload ECG Data</h2>
+                <div class="file-upload">
+                    <label for="fileInput" class="file-upload-label" id="fileUploadLabel">
+                        <i class="fas fa-file-csv"></i>
+                        <span>Click to browse or drag & drop your CSV file</span>
+                        <small>Supports: .csv files with Lead_I and Lead_II columns</small>
+                    </label>
+                    <input type="file" id="fileInput" accept=".csv">
+                </div>
+                
+                <div class="error-message" id="errorMessage"></div>
+                
+                <div style="display: flex; gap: 1rem;">
+                    <button class="btn btn-primary" id="analyzeBtn">
+                        <i class="fas fa-play"></i> Analyze ECG
+                    </button>
+                    <a href="/feature_analysis" class="btn btn-primary" id="featureAnalysisBtn">
+                        <i class="fas fa-chart-bar"></i> View Feature Analysis
+                    </a>
+                </div>
+            </section>
+            
+            <div class="dual-chart-container">
+                <div class="chart-container">
+                    <h3><i class="fas fa-chart-line"></i> Lead I</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="leadIChart"></canvas>
+                    </div>
+                    <div class="chart-actions">
+                        <button class="chart-btn" id="zoomInBtn1"><i class="fas fa-search-plus"></i> Zoom In</button>
+                        <button class="chart-btn" id="zoomOutBtn1"><i class="fas fa-search-minus"></i> Zoom Out</button>
+                        <button class="chart-btn" id="resetBtn1"><i class="fas fa-sync-alt"></i> Reset</button>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <h3><i class="fas fa-chart-line"></i> Lead II</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="leadIIChart"></canvas>
+                    </div>
+                    <div class="chart-actions">
+                        <button class="chart-btn" id="zoomInBtn2"><i class="fas fa-search-plus"></i> Zoom In</button>
+                        <button class="chart-btn" id="zoomOutBtn2"><i class="fas fa-search-minus"></i> Zoom Out</button>
+                        <button class="chart-btn" id="resetBtn2"><i class="fas fa-sync-alt"></i> Reset</button>
+                    </div>
+                </div>
+                
+                <div class="results-container" id="resultsContainer" style="display: none;">
+                    <h2><i class="fas fa-diagnoses"></i> Analysis Results</h2>
+                    
+                    <div class="diagnosis-summary">
+                        <h3>Diagnosis Summary</h3>
+                        <div class="summary-cards" id="summaryCards"></div>
+                    </div>
+                    
+                    <div class="signal-quality" id="signalQuality">
+                        <div class="quality-indicator">
+                            <span class="quality-dot" id="qualityDot"></span>
+                            <span id="qualityText">Signal Quality: -</span>
+                        </div>
+                        <span id="snrValue">SNR: - dB</span>
+                    </div>
+                    
+                    <div class="tab-container">
+                        <div class="tabs">
+                            <div class="tab active" data-tab="segments">Segment Analysis</div>
+                            <div class="tab" data-tab="probabilities">Probability Distributions</div>
+                            <div class="tab" data-tab="metrics">Model Metrics</div>
+                        </div>
+                        
+                        <div class="tab-content active" id="segmentsTab">
+                            <div class="segment-results">
+                                <h4>Detailed Segment Analysis</h4>
+                                <p>Each 1-second segment of the ECG is analyzed independently:</p>
+                                
+                                <div class="segment-table-container">
+                                    <table class="segment-table" id="segmentTable">
+                                        <thead>
+                                            <tr>
+                                                <th>Segment</th>
+                                                <th>Prediction</th>
+                                                <th>Precision</th>
+                                                <th>Top Probability</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="tab-content" id="probabilitiesTab">
+                            <h4>Class Probability Distributions</h4>
+                            <p>Model confidence across all beat classes:</p>
+                            <div id="probabilityCharts"></div>
+                        </div>
+                        
+                        <div class="tab-content" id="metricsTab">
+                            <div class="model-metrics">
+                                <h4>Model Performance Metrics</h4>
+                                <p>Overall model performance on validation data:</p>
+                                
+                                <div class="metrics-grid" id="metricsGrid"></div>
+                            </div>
+                            
+                            <div class="feature-analysis-container">
+                                <h4>Feature Importance Analysis</h4>
+                                <p>Key features that contribute most to the model's predictions:</p>
+                                
+                                <div id="featurePlot" class="feature-plot"></div>
+                                
+                                <table class="feature-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Feature Name</th>
+                                            <th>Importance Score</th>
+                                            <th>Feature Type</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="featureTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <div class="loading" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <h3>Analyzing ECG Data</h3>
+            <p>Please wait while we process your ECG signal...</p>
+        </div>
+    </div>
+    
+    <script>
+        // DOM Elements
+        const fileInput = document.getElementById('fileInput');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const summaryCards = document.getElementById('summaryCards');
+        const segmentTable = document.getElementById('segmentTable').querySelector('tbody');
+        const signalQuality = document.getElementById('signalQuality');
+        const qualityDot = document.getElementById('qualityDot');
+        const qualityText = document.getElementById('qualityText');
+        const snrValue = document.getElementById('snrValue');
+        const metricsGrid = document.getElementById('metricsGrid');
+        const probabilityCharts = document.getElementById('probabilityCharts');
+        const featurePlot = document.getElementById('featurePlot');
+        const featureTableBody = document.getElementById('featureTableBody');
+        
+        // Chart elements
+        const leadIChartCtx = document.getElementById('leadIChart').getContext('2d');
+        const leadIIChartCtx = document.getElementById('leadIIChart').getContext('2d');
+        let leadIChart = null;
+        let leadIIChart = null;
+        
+        // Label colors for visualization
+        const LABEL_COLORS = {
+            'Normal beat': '#4cc9f0',
+            'Left bundle branch block beat': '#4361ee',
+            'Right bundle branch block beat': '#3f37c9',
+            'Atrial premature beat': '#7209b7',
+            'Premature ventricular contraction': '#f72585',
+            'Paced beat': '#4895ef',
+            'Fusion of ventricular and normal beat': '#b5179e',
+            'Fusion beat': '#560bad',
+            'Nodal (junctional) escape beat': '#480ca8',
+            'Aberrated atrial premature beat': '#3a0ca3',
+            'Nodal (junctional) premature beat': '#3f37c9',
+            'Ventricular escape beat': '#4cc9f0'
+        };
+        
+        // Feature type colors
+        const FEATURE_TYPE_COLORS = {
+            'Time-Domain': '#4cc9f0',
+            'Frequency-Domain': '#4895ef',
+            'Wavelet': '#4361ee',
+            'HRV': '#3f37c9'
+        };
+        
+        // Clinical interpretations
+        const CLINICAL_INTERPRETATIONS = {
+            'Normal beat': {
+                description: "Normal sinus rhythm with no significant abnormalities",
+                implications: "No immediate clinical concern",
+                action: "Routine follow-up as indicated"
+            },
+            'Left bundle branch block beat': {
+                description: "Delayed activation of the left ventricle",
+                implications: "May indicate underlying heart disease",
+                action: "Cardiac evaluation recommended"
+            },
+            'Right bundle branch block beat': {
+                description: "Delayed activation of the right ventricle",
+                implications: "Can be normal variant or indicate pathology",
+                action: "Clinical correlation needed"
+            },
+            'Atrial premature beat': {
+                description: "Early electrical impulse originating in the atria",
+                implications: "Common finding, may be benign or symptomatic",
+                action: "Evaluate for triggers if frequent"
+            },
+            'Premature ventricular contraction': {
+                description: "Early electrical impulse originating in the ventricles",
+                implications: "May be benign or indicate heart disease",
+                action: "Cardiac evaluation if frequent or symptomatic"
+            },
+            'Paced beat': {
+                description: "Electrical activity initiated by a pacemaker",
+                implications: "Expected finding in patients with pacemakers",
+                action: "Verify pacemaker settings if new finding"
+            },
+            'Fusion of ventricular and normal beat': {
+                description: "Hybrid of normal and ventricular activation",
+                implications: "Occurs with competing rhythms",
+                action: "Evaluate underlying rhythm"
+            },
+            'Fusion beat': {
+                description: "Combination of two simultaneous impulses",
+                implications: "Indicates competing pacemaker sites",
+                action: "Clinical correlation needed"
+            },
+            'Nodal (junctional) escape beat': {
+                description: "Late beat originating from AV junction",
+                implications: "Backup rhythm when primary pacemaker fails",
+                action: "Evaluate for bradycardia causes"
+            },
+            'Aberrated atrial premature beat': {
+                description: "Atrial beat with abnormal conduction",
+                implications: "May mimic ventricular ectopy",
+                action: "Distinguish from true ventricular beats"
+            },
+            'Nodal (junctional) premature beat': {
+                description: "Early impulse from AV junction",
+                implications: "Less common than atrial ectopy",
+                action: "Generally benign if infrequent"
+            },
+            'Ventricular escape beat': {
+                description: "Late ventricular rhythm",
+                implications: "Occurs with significant bradycardia",
+                action: "Evaluate for conduction system disease"
+            }
+        };
+        
+        // Initialize charts
+        function initCharts(leadIData, leadIIData, samplingRate = 360) {
+    // Destroy existing charts if they exist
+    if (leadIChart) leadIChart.destroy();
+    if (leadIIChart) leadIIChart.destroy();
+
+    // Create time axis labels
+    const timeLabels = Array.from(
+        {length: Math.min(leadIData.length, 1000)}, // Limit to first 1000 points
+        (_, i) => (i / samplingRate).toFixed(2)
+    );
+
+    // Chart configuration
+    const chartConfig = {
+        type: 'line',
+        data: {
+            labels: timeLabels,
+            datasets: [{
+                data: leadIData.slice(0, 1000), // Limit data points
+                borderColor: '#4361ee',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                fill: false,
+                tension: 0.1,
+                label: 'Lead I'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                zoom: {
+                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy' },
+                    pan: { enabled: true, mode: 'xy' }
+                },
+                legend: { display: false },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} mV at ${context.label}s`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    title: { display: true, text: 'Time (seconds)' },
+                    grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                },
+                y: {
+                    title: { display: true, text: 'Amplitude (mV)' },
+                    suggestedMin: -2,
+                    suggestedMax: 2,
+                    grid: { color: 'rgba(0, 0, 0, 0.05)' }
+                }
+            },
+            elements: { line: { cubicInterpolationMode: 'monotone' } }
+        }
+    };
+
+    // Create Lead I chart
+    leadIChart = new Chart(leadIChartCtx, chartConfig);
+    
+    // Create Lead II chart with different data
+    const leadIIConfig = JSON.parse(JSON.stringify(chartConfig));
+    leadIIConfig.data.datasets[0].data = leadIIData.slice(0, 1000);
+    leadIIConfig.data.datasets[0].borderColor = '#f72585';
+    leadIIConfig.data.datasets[0].label = 'Lead II';
+    leadIIChart = new Chart(leadIIChartCtx, leadIIConfig);
+    
+    setupChartControls();
+}
+        
+        function setupChartControls() {
+            // Lead I controls
+            document.getElementById('zoomInBtn1').addEventListener('click', () => {
+                if (leadIChart) leadIChart.zoom(1.2);
+            });
+            document.getElementById('zoomOutBtn1').addEventListener('click', () => {
+                if (leadIChart) leadIChart.zoom(0.8);
+            });
+            document.getElementById('resetBtn1').addEventListener('click', () => {
+                if (leadIChart) leadIChart.resetZoom();
+            });
+            
+            // Lead II controls
+            document.getElementById('zoomInBtn2').addEventListener('click', () => {
+                if (leadIIChart) leadIIChart.zoom(1.2);
+            });
+            document.getElementById('zoomOutBtn2').addEventListener('click', () => {
+                if (leadIIChart) leadIIChart.zoom(0.8);
+            });
+            document.getElementById('resetBtn2').addEventListener('click', () => {
+                if (leadIIChart) leadIIChart.resetZoom();
+            });
+        }
+        
+        // Handle file upload
+        fileInput.addEventListener('change', function() {
+            errorMessage.style.display = 'none';
+            
+            // Basic file size validation (e.g., 10MB max)
+            if (this.files[0] && this.files[0].size > 10 * 1024 * 1024) {
+                showError('File size too large. Maximum 10MB allowed.');
+                this.value = '';
+            }
+        });
+        
+        // Analyze button click handler
+        analyzeBtn.addEventListener('click', async function() {
+            if (!fileInput.files.length) {
+                showError('Please select a file first');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                showError('Please upload a CSV file');
+                return;
+            }
+
+            loadingOverlay.style.display = 'flex';
+            analyzeBtn.disabled = true;
+            errorMessage.style.display = 'none';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Server error');
+                }
+
+                // Display the results
+                displayResults(result);
+                
+            } catch (error) {
+                showError(error.message);
+                resultsContainer.style.display = 'none';
+            } finally {
+                loadingOverlay.style.display = 'none';
+                analyzeBtn.disabled = false;
+            }
+        });
+        
+        function displayDiagnosisSummary(summary = {}) {
+            summaryCards.innerHTML = '';
+            
+            // Convert summary to array of entries and sort by percentage
+            const summaryEntries = Object.entries(summary).map(([label, data]) => ({
+                label,
+                percentage: data?.percentage || 0,
+                precision: data?.precision || 0,
+                confidence_avg: data?.confidence_avg || 0
+            })).sort((a, b) => b.percentage - a.percentage);
+            
+            summaryEntries.forEach(({label, percentage, precision, confidence_avg}) => {
+                const interpretation = CLINICAL_INTERPRETATIONS[label] || {
+                    description: "No specific interpretation available",
+                    implications: "Clinical correlation recommended",
+                    action: "Consult cardiology if concerned"
+                };
+                
+                const card = document.createElement('div');
+                card.className = 'summary-card';
+                card.innerHTML = `
+                    <h4>${label}</h4>
+                    <p><span class="percentage">${percentage.toFixed(1)}%</span> of segments</p>
+                    <p class="precision">Model precision: ${(precision * 100).toFixed(1)}%</p>
+                    <p>Avg confidence: ${(confidence_avg * 100).toFixed(1)}%</p>
+                    <p style="margin-top: 0.5rem; font-size: 0.85rem;">${interpretation.description}</p>
+                `;
+                
+                summaryCards.appendChild(card);
+            });
+        }
+        
+        function displaySignalQuality(quality = {}) {
+            const snr = quality?.snr_db || 0;
+            let qualityClass = 'poor';
+            let qualityLabel = 'Poor';
+            
+            if (snr > 20) {
+                qualityClass = 'excellent';
+                qualityLabel = 'Excellent';
+            } else if (snr > 15) {
+                qualityClass = 'good';
+                qualityLabel = 'Good';
+            } else if (snr > 10) {
+                qualityClass = 'poor';
+                qualityLabel = 'Poor';
+            } else {
+                qualityClass = 'bad';
+                qualityLabel = 'Unacceptable';
+            }
+            
+            qualityDot.className = `quality-dot ${qualityClass}`;
+            qualityText.textContent = `Signal Quality: ${qualityLabel}`;
+            snrValue.textContent = `SNR: ${snr.toFixed(1)} dB`;
+        }
+        
+        function displaySegmentAnalysis(segments = []) {
+            segmentTable.innerHTML = '';
+            
+            segments.forEach((segment, index) => {
+                const probabilities = segment?.probability_distribution || {};
+                const prediction = segment?.prediction || 'Unknown';
+                const precision = segment?.precision || 0;
+                
+                // Find the top probability
+                const topClass = Object.entries(probabilities).reduce((a, b) => 
+                    a[1] > b[1] ? a : b, ['Unknown', 0]
+                );
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${prediction}</td>
+                    <td>${(precision * 100).toFixed(1)}%</td>
+                    <td>
+                        ${topClass[0]} (${(topClass[1] * 100).toFixed(1)}%)
+                        <div class="probability-bar">
+                            <div class="probability-fill" style="width: ${topClass[1] * 100}%"></div>
+                        </div>
+                    </td>
+                `;
+                
+                segmentTable.appendChild(row);
+            });
+        }
+        
+        function displayModelMetrics(metrics = {}) {
+    metricsGrid.innerHTML = '';
+    
+    // Safely extract metrics with proper fallbacks
+    const metricsToShow = [
+        { 
+            name: 'Overall Accuracy', 
+            value: parseFloat(metrics?.accuracy || metrics?.overall_metrics?.accuracy || 0),
+            format: v => isNaN(v) ? 'N/A' : `${(v * 100).toFixed(1)}%`
+        },
+        { 
+            name: 'Weighted Precision', 
+            value: parseFloat(metrics?.precision || metrics?.overall_metrics?.precision_weighted || 0),
+            format: v => isNaN(v) ? 'N/A' : `${(v * 100).toFixed(1)}%`
+        },
+        { 
+            name: 'Weighted Recall', 
+            value: parseFloat(metrics?.recall || metrics?.overall_metrics?.recall_weighted || 0),
+            format: v => isNaN(v) ? 'N/A' : `${(v * 100).toFixed(1)}%`
+        },
+        { 
+            name: 'Weighted F1 Score', 
+            value: parseFloat(metrics?.f1 || metrics?.overall_metrics?.f1_weighted || 0),
+            format: v => isNaN(v) ? 'N/A' : `${(v * 100).toFixed(1)}%`
+        }
+    ];
+    
+    metricsToShow.forEach(metric => {
+        const card = document.createElement('div');
+        card.className = 'metric-card';
+        
+        const title = document.createElement('h5');
+        title.textContent = metric.name;
+        
+        const value = document.createElement('p');
+        value.textContent = metric.format(metric.value);
+        
+        // Add color coding based on value
+        if (!isNaN(metric.value)) {
+            if (metric.value > 0.8) {
+                value.style.color = '#4ad66d'; // Green for good performance
+            } else if (metric.value > 0.6) {
+                value.style.color = '#f8961e'; // Orange for moderate performance
+            } else {
+                value.style.color = '#f72585'; // Red for poor performance
+            }
+        }
+        
+        card.appendChild(title);
+        card.appendChild(value);
+        metricsGrid.appendChild(card);
+    });
+}
+        function displayProbabilityDistributions(segments = []) {
+            probabilityCharts.innerHTML = '<canvas id="probabilityChart" height="300"></canvas>';
+            
+            // Aggregate probabilities across all segments
+            const classProbabilities = {};
+            const classCounts = {};
+            
+            segments.forEach(segment => {
+                const probabilities = segment?.probability_distribution || {};
+                Object.entries(probabilities).forEach(([cls, prob]) => {
+                    if (!classProbabilities[cls]) {
+                        classProbabilities[cls] = 0;
+                        classCounts[cls] = 0;
+                    }
+                    classProbabilities[cls] += prob;
+                    classCounts[cls]++;
+                });
+            });
+            
+            // Calculate average probabilities
+            const classes = Object.keys(classProbabilities);
+            const avgProbabilities = classes.map(cls => 
+                classCounts[cls] ? classProbabilities[cls] / classCounts[cls] : 0
+            );
+            
+            // Sort by probability descending
+            const sortedIndices = [...Array(classes.length).keys()]
+                .sort((a, b) => avgProbabilities[b] - avgProbabilities[a]);
+            const sortedClasses = sortedIndices.map(i => classes[i]);
+            const sortedProbs = sortedIndices.map(i => avgProbabilities[i]);
+            const sortedColors = sortedIndices.map(i => LABEL_COLORS[classes[i]] || '#6c757d');
+            
+            // Create chart
+            const ctx = document.getElementById('probabilityChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedClasses,
+                    datasets: [{
+                        data: sortedProbs,
+                        backgroundColor: sortedColors,
+                        borderColor: sortedColors.map(c => c.replace('0.6', '1')),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.label}: ${(context.raw * 100).toFixed(1)}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            ticks: {
+                                callback: function(value) {
+                                    return (value * 100) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function displayFeatureAnalysis(features = []) {
+    // Debug: Log raw features data
+    console.log('[DEBUG] Raw features data:', features);
+    
+    // Clear previous content
+    featurePlot.innerHTML = '';
+    featureTableBody.innerHTML = '';
+    
+    // Validate features data
+    if (!features || features.length === 0) {
+        const msg = 'No features data received from server';
+        console.warn(msg);
+        featurePlot.innerHTML = `<p class="no-data">${msg}</p>`;
+        return;
+    }
+
+    if (!features.some(f => f.importance > 0)) {
+        const msg = 'All feature importances are zero or invalid';
+        console.warn(msg, features);
+        featurePlot.innerHTML = `<p class="no-data">${msg}</p>`;
+        return;
+    }
+
+    // Process and validate features
+    const validFeatures = features.map((f, index) => {
+        // Debug each feature
+        if (!f.name || isNaN(parseFloat(f.importance))) {
+            console.warn(`Invalid feature at index ${index}:`, f);
+        }
+        
+        return {
+            name: f.name || `Feature_${index}`,
+            importance: Math.max(0, parseFloat(f.importance) || 0),
+            type: FEATURE_TYPE_COLORS[f.type] ? f.type : 'Other'
+        };
+    });
+
+    // Sort by importance (descending)
+    const sortedFeatures = [...validFeatures].sort((a, b) => b.importance - a.importance);
+    console.log('[DEBUG] Sorted features:', sortedFeatures.slice(0, 5)); // Log top 5 features
+
+    // Create visualization
+    try {
+        // Debug: Verify Plotly is loaded
+        if (typeof Plotly === 'undefined') {
+            throw new Error('Plotly library not loaded');
+        }
+
+        const trace = {
+            x: sortedFeatures.map(f => f.importance),
+            y: sortedFeatures.map(f => f.name),
+            type: 'bar',
+            orientation: 'h',
+            marker: {
+                color: sortedFeatures.map(f => {
+                    const color = FEATURE_TYPE_COLORS[f.type] || '#6c757d';
+                    if (!color) console.warn(`No color defined for type: ${f.type}`);
+                    return color;
+                })
+            },
+            hoverinfo: 'x+y',
+            hoverlabel: {
+                namelength: -1 // Prevent truncation of long names
+            }
+        };
+
+        const layout = {
+            title: 'Feature Importance Analysis',
+            margin: { l: 200, r: 50, b: 50, t: 50 }, // Increased left margin
+            xaxis: { 
+                title: 'Importance Score',
+                rangemode: 'nonnegative'
+            },
+            yaxis: {
+                automargin: true,
+                tickfont: { size: 10 } // Smaller font for long names
+            },
+            height: Math.max(400, sortedFeatures.length * 25) // Dynamic height
+        };
+
+        Plotly.newPlot(featurePlot, [trace], layout, {
+            responsive: true,
+            displayModeBar: true
+        });
+
+        // Update table
+        updateFeatureTable(sortedFeatures);
+
+    } catch (e) {
+        console.error('Visualization error:', e);
+        featurePlot.innerHTML = `
+            <div class="error-alert">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Error rendering feature importance chart</p>
+                <small>${e.message}</small>
+            </div>
+        `;
+    }
+}
+
+function updateFeatureTable(features) {
+    featureTableBody.innerHTML = features.map(f => `
+        <tr>
+            <td>${f.name}</td>
+            <td>${f.importance.toFixed(6)}</td>
+            <td>
+                <span class="feature-type ${f.type.toLowerCase().replace(' ', '-')}">
+                    ${f.type}
+                </span>
+            </td>
+        </tr>
+    `).join('');
+
+    // Debug: Verify table update
+    console.log(`[DEBUG] Rendered ${features.length} features in table`);
+}
+        
+        function setupTabs() {
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    // Remove active class from all tabs and contents
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    
+                    // Add active class to clicked tab and corresponding content
+                    tab.classList.add('active');
+                    const tabId = tab.getAttribute('data-tab');
+                    document.getElementById(`${tabId}Tab`).classList.add('active');
+                });
+            });
+        }
+        
+        function showError(message) {
+            errorMessage.innerHTML = `
+                <strong>Error:</strong> ${message}
+                <br><br>
+                <small>Please ensure your file:
+                <ul>
+                    <li>Is a valid CSV file</li>
+                    <li>Contains Lead_I and Lead_II columns</li>
+                    <li>Has sufficient ECG signal data (minimum 2 seconds)</li>
+                    <li>Doesn't contain only flatlines or noise</li>
+                </ul>
+                </small>
+            `;
+            errorMessage.style.display = 'block';
+        }
+        
+        function displayResults(result) {
+    // Show results container
+    resultsContainer.style.display = 'block';
+    
+    // Safely handle the response data
+    const diagnosisSummary = result.diagnosis_summary || {};
+    const segmentDetails = result.segment_details || [];
+    const signalQuality = result.signal_quality || { snr_db: 0, quality: 'Unknown' };
+    const modelMetrics = result.model_metrics || {};
+    const features = result.features || [];
+    const ecgSignals = result.ecg_signals || { 
+        'Lead_I': [], 
+        'Lead_II': [] 
+    };
+
+    // Display diagnosis summary
+    displayDiagnosisSummary(diagnosisSummary);
+    
+    // Display signal quality
+    displaySignalQuality(signalQuality);
+    
+    // Display segment analysis
+    displaySegmentAnalysis(segmentDetails);
+    
+    // Display model metrics
+    displayModelMetrics(modelMetrics);
+    
+    // Display probability distributions
+    displayProbabilityDistributions(segmentDetails);
+    
+    // Display feature analysis if available
+    if (features.length > 0) {
+        displayFeatureAnalysis(features);
+    }
+    
+    // Initialize charts with actual ECG data
+    initCharts(
+        ecgSignals.Lead_I || [], 
+        ecgSignals.Lead_II || [], 
+        TARGET_FS= 360
+    );
+    
+
+    
+    // Set up tab switching
+    setupTabs();
+    
+    // Scroll to results
+    resultsContainer.scrollIntoView({ behavior: 'smooth' });
+}
+        // Drag and drop functionality
+        const fileUploadLabel = document.getElementById('fileUploadLabel');
+        
+        fileUploadLabel.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUploadLabel.style.borderColor = 'var(--primary)';
+            fileUploadLabel.style.backgroundColor = 'rgba(67, 97, 238, 0.05)';
+        });
+        
+        fileUploadLabel.addEventListener('dragleave', () => {
+            fileUploadLabel.style.borderColor = 'var(--gray)';
+            fileUploadLabel.style.backgroundColor = 'white';
+        });
+        
+        fileUploadLabel.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUploadLabel.style.borderColor = 'var(--gray)';
+            fileUploadLabel.style.backgroundColor = 'white';
+            
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                errorMessage.style.display = 'none';
+            }
+        });
+        
+        // Initialize empty charts
+        initCharts([], []);
+    </script>
+</body>
+</html>

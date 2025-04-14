@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECG Diagnostic System - Feature Analysis</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-light: #4895ef;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --warning: #f8961e;
+            --dark: #212529;
+            --light: #f8f9fa;
+            --gray: #6c757d;
+        }
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f2f5;
+            color: var(--dark);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        
+        .main-content {
+            padding: 2rem;
+        }
+        
+        .nav-link {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: var(--primary);
+            color: white;
+            border-radius: 8px;
+            text-decoration: none;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link:hover {
+            background: var(--secondary);
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .metric-card {
+            padding: 1.5rem;
+            background: var(--light);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .metric-card h3 {
+            color: var(--gray);
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-card p {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+        
+        .feature-plot {
+            height: 600px;
+            margin: 2rem 0;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .feature-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+        }
+        
+        .feature-table th, .feature-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .feature-table th {
+            background-color: var(--light);
+            font-weight: 500;
+        }
+        
+        .feature-table tr:hover {
+            background-color: var(--light);
+        }
+        
+        .feature-type {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: white;
+        }
+        
+        .time-domain {
+            background-color: var(--success);
+        }
+        
+        .freq-domain {
+            background-color: var(--primary-light);
+        }
+        
+        .wavelet {
+            background-color: var(--primary);
+        }
+        
+        .hrv {
+            background-color: var(--secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="header">
+            <h1><i class="fas fa-chart-bar"></i> ECG Feature Analysis</h1>
+            <p>Feature importance and model performance metrics</p>
+        </header>
+        
+        <main class="main-content">
+            <a href="/" class="nav-link">
+                <i class="fas fa-arrow-left"></i> Back to ECG Classifier
+            </a>
+            
+            <h2><i class="fas fa-tachometer-alt"></i> Model Performance Metrics</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>Overall Accuracy</h3>
+                    <p>{{ "%.1f"|format(overall_metrics.accuracy * 100) }}%</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Weighted Precision</h3>
+                    <p>{{ "%.1f"|format(overall_metrics.precision_weighted * 100) }}%</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Weighted Recall</h3>
+                    <p>{{ "%.1f"|format(overall_metrics.recall_weighted * 100) }}%</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Weighted F1 Score</h3>
+                    <p>{{ "%.1f"|format(overall_metrics.f1_weighted * 100) }}%</p>
+                </div>
+            </div>
+
+            <h2><i class="fas fa-table"></i> Class-Specific Metrics</h2>
+            <table class="feature-table">
+                <thead>
+                    <tr>
+                        <th>Class</th>
+                        <th>Precision</th>
+                        <th>Recall</th>
+                        <th>F1 Score</th>
+                        <th>ROC AUC</th>
+                    </tr>
+                </thead>
+                <tbody>
+    {% for class_id, metrics in class_metrics.items() %}
+    <tr>
+        <td>{{ label_mapping.get(class_id, 'Class ' + class_id|string) }}</td>
+        <td>{{ "%.2f"|format(metrics.get('precision', 0)) }}</td>
+        <td>{{ "%.2f"|format(metrics.get('recall', 0)) }}</td>
+        <td>{{ "%.2f"|format(metrics.get('f1', 0)) }}</td>
+        <td>{{ "%.2f"|format(metrics.get('roc_auc', 0)) }}</td>
+    </tr>
+    {% endfor %}
+</tbody>
+            </table>
+            
+            <h2><i class="fas fa-star"></i> Feature Importance</h2>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #4cc9f0;"></div>
+                <span>Time-Domain Features</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #4895ef;"></div>
+                <span>Frequency-Domain Features</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #4361ee;"></div>
+                <span>Wavelet Features</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #3f37c9;"></div>
+                <span>HRV Features</span>
+            </div>
+        </div>
+            
+            
+            <div id="featurePlot" class="feature-plot"></div>
+            
+            <h2><i class="fas fa-table"></i> Feature Importance Details</h2>
+            <table class="feature-table">
+                <thead>
+                    <tr>
+                        <th>Feature Name</th>
+                        <th>Importance Score</th>
+                        <th>Feature Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for feature in features %}
+                    <tr>
+                        <td>{{ feature.name }}</td>
+                        <td>{{ "%.6f"|format(feature.importance) }}</td>
+                        <td>
+                            <span class="feature-type 
+                                {% if feature.type == 'Time-Domain' %}time-domain
+                                {% elif feature.type == 'Frequency-Domain' %}freq-domain
+                                {% elif feature.type == 'Wavelet' %}wavelet
+                                {% else %}hrv
+                                {% endif %}">
+                                {{ feature.type }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <h2><i class="fas fa-info-circle"></i> Model Metadata</h2>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>Training Samples</h3>
+                    <p>{{ "{:,}".format(metadata.training_samples) }}</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Test Samples</h3>
+                    <p>{{ "{:,}".format(metadata.test_samples) }}</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Number of Features</h3>
+                    <p>{{ metadata.num_features }}</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Number of Classes</h3>
+                    <p>{{ metadata.classes|length }}</p>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        // Get features data from Flask
+        var featuresData = JSON.parse('{{ features|tojson|safe }}');
+        
+        // Prepare data for Plotly
+        var featureNames = featuresData.map(function(f) { return f.name; });
+        var importanceScores = featuresData.map(function(f) { return f.importance; });
+        var colors = featuresData.map(function(f) { 
+            if (f.type === 'Time-Domain') return '#4cc9f0';
+            if (f.type === 'Frequency-Domain') return '#4895ef';
+            if (f.type === 'Wavelet') return '#4361ee';
+            return '#3f37c9';
+        });
+        
+        // Create the plot
+        var data = [{
+            type: 'bar',
+            x: importanceScores,
+            y: featureNames,
+            orientation: 'h',
+            marker: {
+                color: colors
+            }
+        }];
+        
+        var layout = {
+            title: 'Feature Importance Analysis',
+            xaxis: { title: 'Importance Score' },
+            yaxis: { 
+                title: 'Feature Name',
+                automargin: true
+            },
+            margin: { l: 150, r: 50, b: 50, t: 50 },
+            height: 600
+        };
+        
+        Plotly.newPlot('featurePlot', data, layout);
+    </script>
+</body>
+</html>
